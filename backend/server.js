@@ -1,6 +1,3 @@
-// ============================================================
-// server.js – EcoCash Zimbabwe Version with All Features
-// ============================================================
 console.log("🟢 1. Server is starting...");
 require('dotenv').config();
 console.log("🟢 2. dotenv loaded");
