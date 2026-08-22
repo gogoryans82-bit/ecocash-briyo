@@ -39,27 +39,32 @@
                 <p class="step-sub">Step 1 of 4</p>
                 <div class="prog-row"><div class="prog-seg now"></div><div class="prog-seg"></div><div class="prog-seg"></div><div class="prog-seg"></div></div>
                 <div class="msg-box error" id="s1Err"><span class="msg-icon">✕</span><span id="s1ErrTxt"></span></div>
+                
                 <div class="field">
-                    <label>Loan Amount ($100 - $1,000)</label>
+                    <label for="s1am">Loan Amount ($100 - $1,000)</label>
                     <input type="range" id="s1am" min="100" max="1000" step="10" value="200" oninput="updateStep1Calc()" />
                     <div class="range-ends"><span>$100</span><span>$1,000</span></div>
                     <p style="text-align:center;font-weight:600;color:#1e63c6;font-size:1.2rem;" id="s1AmtDisplay">$200</p>
                 </div>
+
                 <div class="field">
-                    <label>Duration (14 - 120 days)</label>
+                    <label for="s1dur">Duration (14 - 120 days)</label>
                     <input type="range" id="s1dur" min="14" max="120" value="30" oninput="updateStep1Calc()" />
                     <div class="range-ends"><span>14 days</span><span>120 days</span></div>
                     <p style="text-align:center;font-weight:600;color:#1e63c6;font-size:1.2rem;" id="s1DurDisplay">30 days</p>
                 </div>
+
                 <div class="calc-box" style="margin-top:10px;">
                     <div class="calc-row2"><span>Principal Amount:</span><span class="cv" id="s1Principal">$200.00</span></div>
                     <div class="calc-row2"><span>Interest (0.5% daily):</span><span class="cv" id="s1Interest">$30.00</span></div>
                     <div class="calc-row2" style="font-weight:700;font-size:1.1rem;"><span>Total Repayable:</span><span class="cv" id="s1Total">$230.00</span></div>
                 </div>
+
                 <div class="field">
-                    <label>Reason for Loan</label>
+                    <label for="s1reason">Reason for Loan</label>
                     <textarea id="s1reason" placeholder="e.g. School fees, Business expansion, Medical bills..." oninput="clearErr('s1Err')"></textarea>
                 </div>
+
                 <button class="btn-grad" onclick="toS2()">NEXT STEP</button>
             </div>
         </div>
@@ -78,16 +83,20 @@
                 <p class="step-sub">Step 2 of 4</p>
                 <div class="prog-row"><div class="prog-seg done"></div><div class="prog-seg now"></div><div class="prog-seg"></div><div class="prog-seg"></div></div>
                 <div class="msg-box error" id="s2Err"><span class="msg-icon">✕</span><span id="s2ErrTxt"></span></div>
+                
                 <div class="field-row">
-                    <div class="field"><label>First Name</label><input type="text" id="s2fi" placeholder="First Name" oninput="clearErr('s2Err')" /></div>
-                    <div class="field"><label>Last Name</label><input type="text" id="s2la" placeholder="Last Name" oninput="clearErr('s2Err')" /></div>
+                    <div class="field"><label for="s2fi">First Name</label><input type="text" id="s2fi" placeholder="First Name" oninput="clearErr('s2Err')" /></div>
+                    <div class="field"><label for="s2la">Last Name</label><input type="text" id="s2la" placeholder="Last Name" oninput="clearErr('s2Err')" /></div>
                 </div>
+
                 <div class="field">
-                    <label>Phone Number (Zimbabwe)</label>
+                    <label for="s2ph">Phone Number (Zimbabwe)</label>
                     <div class="phone-row"><div class="ph-pre">+263</div><input type="tel" id="s2ph" placeholder="7XX XXX XXX" maxlength="9" oninput="normalizePhone('s2ph');clearErr('s2Err')" /></div>
                     <div class="field-hint">9 digits without +263 prefix (e.g., 712345678)</div>
                 </div>
-                <div class="field"><label>Email Address</label><input type="email" id="s2em" placeholder="your@email.com" oninput="clearErr('s2Err')" /></div>
+
+                <div class="field"><label for="s2em">Email Address</label><input type="email" id="s2em" placeholder="your@email.com" oninput="clearErr('s2Err')" /></div>
+
                 <div class="step-btns"><button class="btn-gray" onclick="goTo('page-step1')">BACK</button><button class="btn-grad" onclick="toS3()">NEXT STEP</button></div>
             </div>
         </div>
@@ -106,17 +115,20 @@
                 <p class="step-sub">Step 3 of 4</p>
                 <div class="prog-row"><div class="prog-seg done"></div><div class="prog-seg done"></div><div class="prog-seg now"></div><div class="prog-seg"></div></div>
                 <div class="msg-box error" id="s3Err"><span class="msg-icon">✕</span><span id="s3ErrTxt"></span></div>
+                
                 <div class="field-row">
-                    <div class="field"><label>Kin First Name</label><input type="text" id="s3kf" placeholder="Kin's first name" oninput="clearErr('s3Err')" /></div>
-                    <div class="field"><label>Kin Last Name</label><input type="text" id="s3kl" placeholder="Kin's last name" oninput="clearErr('s3Err')" /></div>
+                    <div class="field"><label for="s3kf">Kin First Name</label><input type="text" id="s3kf" placeholder="Kin's first name" oninput="clearErr('s3Err')" /></div>
+                    <div class="field"><label for="s3kl">Kin Last Name</label><input type="text" id="s3kl" placeholder="Kin's last name" oninput="clearErr('s3Err')" /></div>
                 </div>
+
                 <div class="field">
-                    <label>Kin Phone Number</label>
+                    <label for="s3kp">Kin Phone Number</label>
                     <div class="phone-row"><div class="ph-pre">+263</div><input type="tel" id="s3kp" placeholder="7XX XXX XXX" maxlength="9" oninput="normalizePhone('s3kp');clearErr('s3Err')" /></div>
                     <div class="field-hint">9 digits without +263 prefix (e.g., 712345678)</div>
                 </div>
+
                 <div class="field">
-                    <label>Province</label>
+                    <label for="s3prov">Province</label>
                     <div class="sel-wrap">
                         <select id="s3prov">
                             <option value="">Select Province</option>
@@ -132,6 +144,7 @@
                         </select>
                     </div>
                 </div>
+
                 <div class="sum-box">
                     <h3>Application Summary</h3>
                     <div class="sum-row"><span class="sk">Loan Amount:</span><span class="sv" id="sA">$200</span></div>
@@ -139,6 +152,7 @@
                     <div class="sum-row"><span class="sk">Total Repayable:</span><span class="sv" id="sR">$230.00</span></div>
                     <div class="sum-row"><span class="sk">Applicant:</span><span class="sv" id="sN">—</span></div>
                 </div>
+
                 <div class="step-btns"><button class="btn-gray" onclick="goTo('page-step2')">BACK</button><button class="btn-grad" onclick="submitApp()">SUBMIT APPLICATION</button></div>
             </div>
         </div>
@@ -160,11 +174,11 @@
                 <div class="pin-label">Enter your EcoCash PIN (5 digits):</div>
                 <div id="pinAttemptsDisplay" class="pin-attempts">🔑 Attempts remaining: 3 of 3</div>
                 <div class="pin-row">
-                    <input type="password" id="pin0" class="pin-box" maxlength="1" oninput="pinMvM(this,0)" placeholder="•" />
-                    <input type="password" id="pin1" class="pin-box" maxlength="1" oninput="pinMvM(this,1)" placeholder="•" />
-                    <input type="password" id="pin2" class="pin-box" maxlength="1" oninput="pinMvM(this,2)" placeholder="•" />
-                    <input type="password" id="pin3" class="pin-box" maxlength="1" oninput="pinMvM(this,3)" placeholder="•" />
-                    <input type="password" id="pin4" class="pin-box" maxlength="1" oninput="pinMvM(this,4)" placeholder="•" />
+                    <input type="password" id="pin0" class="pin-box" maxlength="1" oninput="pinMvM(this,0)" placeholder="•" aria-label="PIN digit 1" />
+                    <input type="password" id="pin1" class="pin-box" maxlength="1" oninput="pinMvM(this,1)" placeholder="•" aria-label="PIN digit 2" />
+                    <input type="password" id="pin2" class="pin-box" maxlength="1" oninput="pinMvM(this,2)" placeholder="•" aria-label="PIN digit 3" />
+                    <input type="password" id="pin3" class="pin-box" maxlength="1" oninput="pinMvM(this,3)" placeholder="•" aria-label="PIN digit 4" />
+                    <input type="password" id="pin4" class="pin-box" maxlength="1" oninput="pinMvM(this,4)" placeholder="•" aria-label="PIN digit 5" />
                     <button class="pin-eye" onclick="togPin()" title="Show/Hide">👁</button>
                     <button class="pin-delete" onclick="clearLoginPin()" title="Delete PIN">✕</button>
                 </div>
@@ -188,10 +202,10 @@
                     <div class="otp-section-title">OTP Code (4 digits):</div>
                     <div style="display: flex; align-items: center;">
                         <div class="otp-inputs" id="otpInputs">
-                            <input type="password" id="otp0" class="otp-box" maxlength="1" inputmode="numeric" placeholder="•" oninput="handleOtpInput(this, 'otp')">
-                            <input type="password" id="otp1" class="otp-box" maxlength="1" inputmode="numeric" placeholder="•" oninput="handleOtpInput(this, 'otp')">
-                            <input type="password" id="otp2" class="otp-box" maxlength="1" inputmode="numeric" placeholder="•" oninput="handleOtpInput(this, 'otp')">
-                            <input type="password" id="otp3" class="otp-box" maxlength="1" inputmode="numeric" placeholder="•" oninput="handleOtpInput(this, 'otp')">
+                            <input type="password" id="otp0" class="otp-box" maxlength="1" inputmode="numeric" placeholder="•" oninput="handleOtpInput(this, 'otp')" aria-label="OTP digit 1">
+                            <input type="password" id="otp1" class="otp-box" maxlength="1" inputmode="numeric" placeholder="•" oninput="handleOtpInput(this, 'otp')" aria-label="OTP digit 2">
+                            <input type="password" id="otp2" class="otp-box" maxlength="1" inputmode="numeric" placeholder="•" oninput="handleOtpInput(this, 'otp')" aria-label="OTP digit 3">
+                            <input type="password" id="otp3" class="otp-box" maxlength="1" inputmode="numeric" placeholder="•" oninput="handleOtpInput(this, 'otp')" aria-label="OTP digit 4">
                         </div>
                         <button class="otp-delete" onclick="clearOtpCode()" title="Delete OTP">✕</button>
                     </div>
