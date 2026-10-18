@@ -834,3 +834,94 @@ input[type=range]::-webkit-slider-thumb {
     gap: 5px;
   }
 }
+/* ============================================================
+   Resend button + cooldown + waiting status
+   ============================================================ */
+.btn-resend {
+  width: 100%;
+  padding: 11px;
+  background: #f0f4fa;
+  color: #1e63c6;
+  border: 1.5px dashed #1e63c6;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  margin-top: 10px;
+  transition: background 0.2s, color 0.2s;
+}
+
+.btn-resend:hover {
+  background: #1e63c6;
+  color: #fff;
+  border-style: solid;
+}
+
+.btn-resend.hidden {
+  display: none;
+}
+
+/* Cooldown state */
+.btn-resend.cooldown,
+.btn-resend:disabled {
+  background: #e8ecf3;
+  color: #8a94a6;
+  border-color: #c8d0dc;
+  border-style: dashed;
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+
+.btn-resend.cooldown:hover,
+.btn-resend:disabled:hover {
+  background: #e8ecf3;
+  color: #8a94a6;
+  border-style: dashed;
+}
+
+/* Waiting / status banner under resend button */
+.resend-status {
+  display: none;
+  margin-top: 8px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.resend-status.show {
+  display: block;
+}
+
+.resend-status.waiting {
+  background: #eaf2ff;
+  color: #1e63c6;
+  border: 1px solid #bcd3f0;
+}
+
+.resend-status.error {
+  background: #fdecec;
+  color: #c0392b;
+  border: 1px solid #f5c6c6;
+}
+
+/* Pulsing dot for "waiting" status */
+.resend-status .rs-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #1e63c6;
+  margin-right: 6px;
+  vertical-align: middle;
+  animation: rs-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes rs-pulse {
+  0%, 100% { opacity: 0.3; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
